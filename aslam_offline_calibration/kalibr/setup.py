@@ -8,7 +8,8 @@ setup_args = generate_distutils_setup(
     packages=['kalibr_errorterms',
               'kalibr_common',
               'kalibr_camera_calibration',
-              'kalibr_imu_camera_calibration'],
+              'kalibr_imu_camera_calibration',
+              'kalibr_apriltag_pose'],
     package_dir={'':'python'},
     scripts=['python/kalibr_bagcreater',
              'python/kalibr_bagextractor',
@@ -17,7 +18,8 @@ setup_args = generate_distutils_setup(
              'python/kalibr_camera_focus',
              'python/kalibr_camera_validator',
              'python/kalibr_create_target_pdf',
-             'python/kalibr_aslam_config']
+             'python/kalibr_aslam_config',
+             'python/kalibr_apriltag_pose']
 )
 
 setup(**setup_args)

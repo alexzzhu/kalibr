@@ -50,7 +50,7 @@ GridCalibrationTargetCheckerboard::GridCalibrationTargetCheckerboard(
 void GridCalibrationTargetCheckerboard::initialize()
 {
   if (_options.showExtractionVideo) {
-    cv::namedWindow("Checkerboard corners", CV_WINDOW_AUTOSIZE);
+    cv::namedWindow("Checkerboard corners", CV_WINDOW_NORMAL);
     cvStartWindowThread();
   }
 }
@@ -90,14 +90,14 @@ bool GridCalibrationTargetCheckerboard::computeObservation(const cv::Mat & image
   cv::Size patternSize(cols(), rows());
   cv::Mat centers(size(), 2, CV_64FC1);
   bool success = cv::findChessboardCorners(image, patternSize, centers, flags);
-
+  
   // do optional subpixel refinement
   if (_options.doSubpixelRefinement && success) {
     cv::cornerSubPix(
         image, centers, cv::Size(11, 11), cv::Size(-1, -1),
         cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
   }
-
+  
   //draw corners
   if (_options.showExtractionVideo) {
     //image with refined (blue) and raw corners (red)
@@ -112,6 +112,7 @@ bool GridCalibrationTargetCheckerboard::computeObservation(const cv::Mat & image
                   CV_RGB(255,0,0), 3, 8, false);
 
     cv::imshow("Checkerboard corners", imageCopy1);  // OpenCV call
+    cv::waitKey(0);
   }
 
   //exit here if there is an error

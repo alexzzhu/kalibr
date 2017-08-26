@@ -1,4 +1,4 @@
-import cv
+#import cv
 import cv_bridge
 import cv2
 import rosbag
@@ -117,3 +117,10 @@ class BagImageDatasetReader(object):
             img_data = np.array(self.CVB.imgmsg_to_cv2(data))  
         return (ts, img_data)
      
+    def getTimestamps(self):
+        timestamps=list()
+        for idx in self.indices:
+            topic, data, stamp = self.bag._read_message(self.index[idx].position)
+            timestamp = data.header.stamp.secs + data.header.stamp.nsecs / 1e9
+            timestamps.append(timestamp)
+        return timestamps

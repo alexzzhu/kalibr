@@ -1,0 +1,270 @@
+#!/usr/bin/env python
+print "importing libraries"
+import sm
+import aslam_cv as acv
+import aslam_cameras_april as acv_april
+import kalibr_common as kc
+from kalibr_imu_camera_calibration import *
+
+import rosbag
+import tf
+import numpy as np
+import argparse
+import signal
+import sys   
+
+# make numpy print prettier
+np.set_printoptions(suppress=True)
+
+def signal_exit(signal, frame):
+    print
+    sm.logWarn("Shutting down! (CTRL+C)")
+    sys.exit(1)
+
+#helper to constrain certain arguments to be specified only once
+class Once(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string = None):
+        if getattr(namespace, self.dest) is not None:
+            msg = '{o} can only be specified once'.format(o = option_string)
+            raise argparse.ArgumentError(None, msg)
+        setattr(namespace, self.dest, values)
+
+def parseArgs():
+    class KalibrArgParser(argparse.ArgumentParser):
+        def error(self, message):
+            self.print_help()
+            sm.logError('%s' % message)
+            sys.exit(2)
+        def format_help(self):
+            formatter = self._get_formatter()
+            formatter.add_text(self.description)
+            formatter.add_usage(self.usage, self._actions,
+                                self._mutually_exclusive_groups)
+            for action_group in self._action_groups:
+                formatter.start_section(action_group.title)
+                formatter.add_text(action_group.description)
+                formatter.add_arguments(action_group._group_actions)
+                formatter.end_section()
+            formatter.add_text(self.epilog)
+            return formatter.format_help()     
+        
+    usage = """
+    Example usage to calibrate a camera system against an IMU using an aprilgrid
+    with temporal calibration enabled.
+    
+    %(prog)s --bag MYROSBAG.bag --cam camchain.yaml --imu imu.yaml \\
+             --target aprilgrid.yaml --time-calibration
+    
+    camchain.yaml: is the camera-system calibration output of the multiple-camera
+                   calibratin tool (kalibr_calibrate_cameras)
+    
+    example aprilgrid.yaml:       |  example imu.yaml: (ADIS16448)
+        target_type: 'aprilgrid'  |      accelerometer_noise_density: 0.006  
+        tagCols: 6                |      accelerometer_random_walk: 0.0002
+        tagRows: 6                |      gyroscope_noise_density: 0.0004
+        tagSize: 0.088            |      gyroscope_random_walk: 4.0e-06
+        tagSpacing: 0.3           |      update_rate: 200.0"""    
+
+    #setup the argument list
+    parser = KalibrArgParser(description='Calibrate the spatial and temporal parameters of an IMU to a camera chain.', usage=usage)
+    
+    #data source
+    groupData = parser.add_argument_group('Dataset source')
+    groupData.add_argument('--bag', dest='bagfile', nargs=1, help='Ros bag file containing image and imu data (rostopics specified in the yamls)', action=Once, required=True)
+    groupData.add_argument('--bag-from-to', metavar='bag_from_to', type=float, nargs=2, help='Use the bag data starting from up to this time [s]')
+    
+    groupVicon = parser.add_argument_group('Mocap topic')
+    groupVicon.add_argument('--mocap_topic', dest='mocap_topic', nargs=1, help='Topic for mocap pose, to be written to file.', action=Once, required=True)
+
+    #configuration files
+    groupCam = parser.add_argument_group('Camera system configuration')
+    groupCam.add_argument('--cams', dest='chainYaml', help='Camera system configuration as yaml file', action=Once)
+    
+    groupImu = parser.add_argument_group('Imu configuration')
+    groupImu.add_argument('--imu', dest='imuYamls', nargs='+', help='Imu configuration as yaml files', required=True, action=Once)
+    
+    groupTarget = parser.add_argument_group('Calibration target')
+    groupTarget.add_argument('--target', dest='target_yaml', help='Calibration target configuration as yaml file', required=True, action=Once)
+    
+    #optimization options
+    groupOpt = parser.add_argument_group('Optimization options')
+    groupOpt.add_argument('--time-calibration', action='store_false', dest='no_time', help='Enable the temporal calibration', required=False)      
+    groupOpt.add_argument('--max-iter', type=int, default=30, dest='max_iter', help='Max. iterations (default: %(default)s)', required=False)
+    groupOpt.add_argument('--recover-covariance', action='store_true', dest='recover_cov', help='Recover the covariance of the design variables.', required=False)
+
+    #Result options  
+    outputSettings = parser.add_argument_group('Output options')
+    outputSettings.add_argument('--show-extraction', action='store_true', dest='showextraction', help='Show the calibration target extraction. (disables plots)')
+    outputSettings.add_argument('--extraction-stepping', action='store_true', dest='extractionstepping', help='Show each image during calibration target extraction  (disables plots)', required=False)
+    outputSettings.add_argument('--verbose', action='store_true', dest='verbose', help='Verbose output (disables plots)')
+    outputSettings.add_argument('--dont-show-report', action='store_true', dest='dontShowReport', help='Do not show the report on screen after calibration.')
+     
+    #print help if no argument is specified
+    if len(sys.argv)==1:
+        parser.print_help()
+        sys.exit(2)
+    
+    #Parser the argument list
+    try:
+        parsed = parser.parse_args()
+    except:
+        sys.exit(2)
+                 
+    if parsed.verbose:
+        parsed.showextraction = True             
+    
+    #there is a with the gtk plot widget, so we cant plot if we have opencv windows open...
+    #--> disable the plots in these special situations
+    if parsed.showextraction or parsed.extractionstepping or parsed.verbose:
+        parsed.dontShowReport = True
+    
+    return parsed
+
+def setupCalibrationTarget(targetConfig, 
+                           camera,
+                           showExtraction=False, 
+                           showReproj=False, 
+                           imageStepping=False):
+        
+    #load the calibration target configuration
+    targetParams = targetConfig.getTargetParams()
+    targetType = targetConfig.getTargetType()
+    
+    if targetType == 'checkerboard':
+        options = acv.CheckerboardOptions(); 
+        options.showExtractionVideo = showExtraction;
+        grid = acv.GridCalibrationTargetCheckerboard(targetParams['targetRows'], 
+                                                     targetParams['targetCols'], 
+                                                     targetParams['rowSpacingMeters'], 
+                                                     targetParams['colSpacingMeters'],
+                                                     options)
+    elif targetType == 'circlegrid':
+        options = acv.CirclegridOptions(); 
+        options.showExtractionVideo = showExtraction;
+        options.useAsymmetricCirclegrid = targetParams['asymmetricGrid']
+        grid = acv.GridCalibrationTargetCirclegrid(targetParams['targetRows'],
+                                                   targetParams['targetCols'], 
+                                                   targetParams['spacingMeters'], 
+                                                   options)
+    elif targetType == 'aprilgrid':
+        options = acv_april.AprilgridOptions(); 
+        options.showExtractionVideo = showExtraction;
+        options.minTagsForValidObs = int( np.max( [targetParams['tagRows'], targetParams['tagCols']] ) + 1 )
+            
+        grid = acv_april.GridCalibrationTargetAprilgrid(targetParams['tagRows'],
+                                                        targetParams['tagCols'], 
+                                                        targetParams['tagSize'], 
+                                                        targetParams['tagSpacing'], 
+                                                        options)
+    else:
+        raise RuntimeError( "Unknown calibration target." )
+                          
+    options = acv.GridDetectorOptions() 
+    options.imageStepping = imageStepping
+    options.plotCornerReprojection = showReproj
+    options.filterCornerOutliers = True
+    #options.filterCornerSigmaThreshold = 2.0
+    #options.filterCornerMinReprojError = 0.2
+    detector = acv.GridDetector(camera.geometry, grid, options)        
+    return detector
+
+def initCameraBagDataset(bagfile, topic, from_to=None):
+    print "Initializing camera rosbag dataset reader:"
+    print "\tDataset:          {0}".format(bagfile)
+    print "\tTopic:            {0}".format(topic)
+    reader = kc.BagImageDatasetReader(bagfile, topic, bag_from_to=from_to)
+    print "\tNumber of images: {0}".format(len(reader.index))
+    return reader
+
+def readViconPoses(bagfile, topic):
+    bag = rosbag.Bag(bagfile)
+    timestamps = []
+    vicon_H = []
+    for topic, msg, t in bag.read_messages(topics=[topic]):
+        timestamps.append(t.to_sec())
+        q = np.array([msg.pose.orientation.w,
+                      msg.pose.orientation.x,
+                      msg.pose.orientation.y,
+                      msg.pose.orientation.z])
+        t = np.array([msg.pose.position.x,
+                      msg.pose.position.y,
+                      msg.pose.position.z])
+        H = tf.transformations.quaternion_matrix(q)
+        H[:3, 3] = np.copy(t)
+        vicon_H.append(H)
+    return timestamps, vicon_H
+
+def main():
+    # Parse the arguments
+    parsed = parseArgs();
+    
+    #logging modess
+    if parsed.verbose:
+        sm.setLoggingLevel(sm.LoggingLevel.Debug)
+    else:
+        sm.setLoggingLevel(sm.LoggingLevel.Info)
+        
+    signal.signal(signal.SIGINT, signal_exit)
+                    
+    #load calibration target configuration 
+    targetConfig = kc.CalibrationTargetParameters(parsed.target_yaml)
+       
+    print "Initializing calibration target:"
+    targetConfig.printDetails()
+    
+    timestamps, vicon_H = readViconPoses(parsed.bagfile[0],
+                                         parsed.mocap_topic[0])
+    
+    vicon_transform_file = open('vicon_poses.txt', 'w')
+    for i in range(len(timestamps)):
+        vicon_transform_file.write("{} ".format(timestamps[i]))
+        for r in range(4):
+            for c in range(4):
+                vicon_transform_file.write("{} ".format(vicon_H[i][r, c]))
+        vicon_transform_file.write('\n')
+
+    print "Initializing camera chain:"
+    chain = kc.CameraChainParameters(parsed.chainYaml)      
+    chain.printDetails()   
+
+    leftCamConfig = chain.getCameraParameters(0)
+    dataset = initCameraBagDataset(parsed.bagfile[0], 
+                                   leftCamConfig.getRosTopic(), 
+                                   parsed.bag_from_to)       
+
+    left_camera = kc.AslamCamera.fromParameters( leftCamConfig )
+
+    detector = setupCalibrationTarget(targetConfig,
+                                      left_camera,
+                                      showExtraction=parsed.showextraction,
+                                      showReproj=parsed.showextraction,
+                                      imageStepping=parsed.extractionstepping)
+
+    multithreading = not (parsed.showextraction or parsed.extractionstepping)
+
+    # The transform in targetObservations take you from camera frame to the aprilgrid frame.
+    (indices, targetObservations) = kc.extractCornersFromDatasetWithIndices(dataset, 
+                                                                            detector, 
+                                                                            multithreading=multithreading)
+    
+    timestamps = dataset.getTimestamps()
+    transform_file = open('left_april_poses.txt', 'w')
+    print (len(timestamps))
+    print len(targetObservations)
+    for i in range(0, len(targetObservations)):
+        transform_file.write("{} ".format(timestamps[indices[i]]))
+        for r in range(0, 4):
+            for c in range(0, 4): 
+                transform_file.write("{} ".format(targetObservations[i].T_t_c().T()[r, c]))
+        transform_file.write('\n')
+    print 'Done!'
+
+    
+if __name__ == "__main__":
+    main()
+#     try:
+#         main()
+#     except Exception,e:
+#         sm.logError("Exception: {0}".format(e))
+#         sys.exit(-1)
+        

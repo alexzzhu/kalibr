@@ -56,8 +56,23 @@ class IccCamera():
         #extract corners
         self.setupCalibrationTarget( targetConfig, showExtraction=showCorners, showReproj=showReproj, imageStepping=showOneStep )
         multithreading = not (showCorners or showReproj or showOneStep)
-        self.targetObservations = kc.extractCornersFromDataset(self.dataset, self.detector, multithreading=multithreading)
+        (indices, self.targetObservations) = kc.extractCornersFromDatasetWithIndices(self.dataset, self.detector, multithreading=multithreading)
         
+        """
+        timestamps = dataset.getTimestamps()
+        transform_file = open('/home/alex/stereo_bags/aug16/stereo_3_poses/april_poses.txt', 'w')
+        print (len(timestamps))
+        print len(self.targetObservations)
+        for i in range(0, len(self.targetObservations)):
+            transform_file.write("{} ".format(timestamps[indices[i]]))
+            for r in range(0, 4):
+                for c in range(0, 4): 
+                    transform_file.write("{} ".format(self.targetObservations[i].T_t_c().T()[r, c]))
+            transform_file.write('\n')
+        print 'Done!'
+        exit()
+        """
+
     def setupCalibrationTarget(self, targetConfig, showExtraction=False, showReproj=False, imageStepping=False):
         
         #load the calibration target configuration
@@ -381,7 +396,6 @@ class IccCameraChain():
         for camNr in range(0, chainConfig.numCameras()):
             camConfig = chainConfig.getCameraParameters(camNr)
             dataset = initCameraBagDataset(parsed.bagfile[0], camConfig.getRosTopic(), parsed.bag_from_to)               
-            
             #create the camera
             self.camList.append( IccCamera( camConfig, 
                                             targetConfig, 

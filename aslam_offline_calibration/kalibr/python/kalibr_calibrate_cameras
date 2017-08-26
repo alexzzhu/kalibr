@@ -11,7 +11,7 @@ import aslam_cv_backend as acvb
 import kalibr_common as kc
 import kalibr_camera_calibration as kcc
 
-import cv
+#import cv
 import cv2
 import os
 import numpy as np
@@ -174,7 +174,6 @@ def main():
             observations = kc.extractCornersFromDataset(cam.dataset, cam.ctarget.detector, 
                                                         multithreading=multithreading, clearImages=False,
                                                         noTransformation=True)
-            
             #populate the database
             for obs in observations:
                 obsdb.addObservation(cam_id, obs)

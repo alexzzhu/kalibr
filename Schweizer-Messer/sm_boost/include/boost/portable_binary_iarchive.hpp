@@ -27,7 +27,7 @@
 #include <boost/archive/archive_exception.hpp>
 #include <boost/archive/basic_binary_iprimitive.hpp>
 #include <boost/archive/detail/common_iarchive.hpp>
-#include <boost/archive/shared_ptr_helper.hpp>
+#include <boost/serialization/shared_ptr_helper.hpp>
 #include <boost/archive/detail/register_archive.hpp>
 
 #include "portable_binary_archive.hpp"

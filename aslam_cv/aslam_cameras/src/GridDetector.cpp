@@ -32,7 +32,7 @@ GridDetector::GridDetector(boost::shared_ptr<CameraGeometryBase> geometry,
 void GridDetector::initializeDetector()
 {
   if (_options.plotCornerReprojection) {
-    cv::namedWindow("Corner reprojection");
+    cv::namedWindow("Corner reprojection", cv::WINDOW_NORMAL);
     cvStartWindowThread();
   }
 }
@@ -123,6 +123,8 @@ bool GridDetector::findTarget(const cv::Mat & image, const aslam::Time & stamp,
   if (success) {
     // also estimate the transformation:
     success = _geometry->estimateTransformation(outObservation, trafo);
+
+    
 
     if (success)
       outObservation.set_T_t_c(trafo);

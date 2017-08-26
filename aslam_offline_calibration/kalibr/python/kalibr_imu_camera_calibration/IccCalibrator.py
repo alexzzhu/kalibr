@@ -213,6 +213,8 @@ class IccCalibrator(object):
                 T_cB_cA, baseline = self.CameraChain.getResultBaseline(camNr-1, camNr)
                 chain.setExtrinsicsLastCamToHere(camNr, T_cB_cA)
 
+                print T_cB_cA
+
             #imu-cam trafos
             T_ci = self.CameraChain.getResultTrafoImuToCam(camNr)
             chain.setExtrinsicsImuToCam(camNr, T_ci)
