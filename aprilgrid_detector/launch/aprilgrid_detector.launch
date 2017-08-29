@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="iso-8859-15"?>
+
+<launch>
+  <include file="$(find tf_publisher)/launch/tf_broadcaster.launch"/>
+  
+  <group ns="davis">
+    <node name="image_proc" pkg="image_proc" type="image_proc"/>
+  </group>
+
+  <node name="aprilgrid_detector" pkg="aprilgrid_detector" type="aprilgrid_detector.py" output="screen" required="true">
+    <param name="camchain" type="string" value="$(find aprilgrid_detector)/config/camchain_left.yaml"/>
+    <param name="target" type="string" value="$(find aprilgrid_detector)/config/aprilgrid_6x6.yaml"/>
+    <!-- Topics -->
+    <remap from="image" to="/davis/image_rect"/>
+  </node>
+</launch>
