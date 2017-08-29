@@ -7,6 +7,7 @@
 #include <aslam/cameras/RadialTangentialDistortion.hpp>
 #include <boost/serialization/nvp.hpp>
 #include <sm/python/boost_serialization_pickle.hpp>
+#include <sm/python/unique_register_ptr_to_python.hpp>
 //#include <aslam/python/ExportDesignVariableAdapter.hpp>
 //#include <aslam/backend/DesignVariableAdapter.hpp>
 //#include <aslam/python/ExportAPrioriInformationError.hpp>
@@ -215,6 +216,8 @@ void exportGenericDistortionFunctions(T & dist) {
 
 void exportFovDistortionFunctions() {
   class_<FovDistortion, boost::shared_ptr<FovDistortion> > distortion("FovDistortion", init<>());
+  sm::python::unique_register_ptr_to_python<boost::shared_ptr<FovDistortion> >();
+
   exportGenericDistortionFunctions<FovDistortion>(distortion);
   distortion.def(init<double>(("FovDistortion(double w)")));
   distortion.def("w", &FovDistortion::w);
@@ -225,6 +228,8 @@ void exportRadialTangentialDistortionFunctions() {
   class_<RadialTangentialDistortion,
       boost::shared_ptr<RadialTangentialDistortion> > rtDistortion(
       "RadialTangentialDistortion", init<>());
+  sm::python::unique_register_ptr_to_python<boost::shared_ptr<RadialTangentialDistortion> >();
+
   exportGenericDistortionFunctions<RadialTangentialDistortion>(rtDistortion);
 
   rtDistortion.def(
@@ -247,6 +252,8 @@ void exportOmniProjection(std::string name) {
 
   class_<OmniProjection<D>, boost::shared_ptr<OmniProjection<D> > > omniProjection(
       name.c_str(), init<>());
+  sm::python::unique_register_ptr_to_python<boost::shared_ptr<OmniProjection<D> > >();
+
   omniProjection.def(init<>((name + "(distortion_t distortion)").c_str())).def(
       init<double, double, double, double, double, int, int, D>(
           (name
@@ -289,6 +296,8 @@ void exportPinholeProjection(std::string name) {
 
   class_<PinholeProjection<D>, boost::shared_ptr<PinholeProjection<D> > > pinholeProjection(
       name.c_str(), init<>());
+  sm::python::unique_register_ptr_to_python<boost::shared_ptr<PinholeProjection<D> > >();
+
   pinholeProjection.def(init<>((name + "(distortion_t distortion)").c_str()))
       .def(
       init<double, double, double, double, int, int, D>(
@@ -331,10 +340,14 @@ void exportCameraProjections() {
 
   class_<NoDistortion, boost::shared_ptr<NoDistortion> > noDistortion(
       "NoDistortion", init<>());
+  sm::python::unique_register_ptr_to_python<boost::shared_ptr<NoDistortion> >();
+
   exportGenericDistortionFunctions<NoDistortion>(noDistortion);
 
   class_<EquidistantDistortion, boost::shared_ptr<EquidistantDistortion> > equidistantDistortion(
       "EquidistantDistortion", init<>());
+  sm::python::unique_register_ptr_to_python<boost::shared_ptr<EquidistantDistortion> >();
+
   equidistantDistortion.def(init<double, double, double, double>());
   exportGenericDistortionFunctions<EquidistantDistortion>(
       equidistantDistortion);

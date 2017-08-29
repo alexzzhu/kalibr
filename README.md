@@ -1,22 +1,26 @@
 ![Kalibr](https://raw.githubusercontent.com/wiki/ethz-asl/kalibr/images/kalibr_small.png)
 
-##Introduction
+## Introduction
 Kalibr is a toolbox that solves the following calibration problems:
 
 1. **Multiple camera calibration**: 
     intrinsic and extrinsic calibration of a camera-systems with non-globally shared overlapping fields of view
 1. **Camera-IMU calibration**:
     spatial and temporal calibration of an IMU w.r.t a camera-system
+1. **Rolling Shutter Camera calibration**:
+    full intrinsic calibration (projection, distortion and shutter parameters) of rolling shutter cameras
+
 
 **Please find more information on the [wiki pages](https://github.com/ethz-asl/kalibr/wiki) of this repository.**
 
 **For questions or comments, please use the [user forum](https://groups.google.com/forum/#!forum/kalibr-users).**
 
-##Authors
+## Authors
 * Paul Furgale ([email](paul.furgale@mavt.ethz.ch))
 * Jérôme Maye ([email](jerome.maye@mavt.ethz.ch))
 * Jörn Rehder ([email](joern.rehder@mavt.ethz.ch))
 * Thomas Schneider ([email](schneith@ethz.ch))
+* Luc Oth
 
 ## References
 The calibration approaches used in Kalibr are based on the following papers. Please cite the appropriate papers when using this toolbox or parts of it in an academic publication.
@@ -24,11 +28,12 @@ The calibration approaches used in Kalibr are based on the following papers. Ple
 1. <a name="paul1"></a>Paul Furgale, Joern Rehder, Roland Siegwart (2013). Unified Temporal and Spatial Calibration for Multi-Sensor Systems. In Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), Tokyo, Japan.
 1. <a name="paul2"></a>Paul Furgale, T D Barfoot, G Sibley (2012). Continuous-Time Batch Estimation Using Temporal Basis Functions. In Proceedings of the IEEE International Conference on Robotics and Automation (ICRA), pp. 2088–2095, St. Paul, MN.
 1. <a name="jmaye"></a> J. Maye, P. Furgale, R. Siegwart (2013). Self-supervised Calibration for Robotic Systems, In Proc. of the IEEE Intelligent Vehicles Symposium (IVS)
+1. <a name="othlu"></a>L. Oth, P. Furgale, L. Kneip, R. Siegwart (2013). Rolling Shutter Camera Calibration, In Proc. of the IEEE Computer Vision and Pattern Recognition (CVPR)
 
 ## Acknowledgments
-This work is supported in part by the European Community's Seventh Framework Programme (FP7/2007-2013) under grants #269916 (V-Charge), and #610603 (EUROPA2).
+This work is supported in part by the European Union's Seventh Framework Programme (FP7/2007-2013) under grants #269916 (V-Charge), and #610603 (EUROPA2).
 
-##License (BSD)
+## License (BSD)
 Copyright (c) 2014, Paul Furgale, Jérôme Maye and Jörn Rehder, Autonomous Systems Lab, ETH Zurich, Switzerland<br>
 Copyright (c) 2014, Thomas Schneider, Skybotix AG, Switzerland<br>
 All rights reserved.<br>

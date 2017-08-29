@@ -4,6 +4,7 @@
 #include <boost/serialization/nvp.hpp>
 #include <aslam/Time.hpp>
 #include <sm/python/boost_serialization_pickle.hpp>
+#include <sm/python/unique_register_ptr_to_python.hpp>
 
 //#include <aslam/python/ExportDesignVariableAdapter.hpp>
 
@@ -40,6 +41,8 @@ void exportGlobalShutter(std::string name) {
       name.c_str(), init<>());
   globalShutter.def(init<>((name + "()").c_str()));
 
+  sm::python::unique_register_ptr_to_python<boost::shared_ptr<GlobalShutter> >();
+
   exportGenericShutterFunctions<GlobalShutter>(globalShutter);
 }
 
@@ -51,6 +54,8 @@ void exportRollingShutter(std::string name) {
       init<double>((name + "(double lineDelay)").c_str())).def(
       "lineDelay", &RollingShutter::lineDelay,
       "Returns the Line Delay of the Rolling Shutter");
+
+  sm::python::unique_register_ptr_to_python<boost::shared_ptr<RollingShutter> >();
 
   exportGenericShutterFunctions<RollingShutter>(rollingShutter);
 }
