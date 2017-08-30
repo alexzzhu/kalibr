@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="iso-8859-15"?>
 
 <launch>
-  <include file="$(find pose_to_tf)/launch/pose_to_tf.launch"/>
+  <include file="$(find pose_smoother)/launch/pose_smoother.launch">
+    <arg name="pose_topic" value="aprilgrid_pose"/>
+    <arg name="to_tf" value="aprilgrid_smoothed"/>
+    <arg name="from_tf" value="camera"/>
+  </include>
+
+  <include file="$(find pose_smoother)/launch/pose_smoother.launch">
+    <arg name="pose_topic" value="/vicon/Inspot/pose"/>
+    <arg name="to_tf" value="robot_smoothed"/>
+    <arg name="from_tf" value="vicon"/>
+  </include>
     
   <group ns="davis">
     <node name="image_proc" pkg="image_proc" type="image_proc"/>

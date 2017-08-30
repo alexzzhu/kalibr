@@ -16,6 +16,7 @@ roslib.load_manifest('aprilgrid_detector')
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import PoseStamped
 import rospy
 
 # make numpy print prettier
@@ -204,6 +205,7 @@ class AprilgridDetector:
                                           self.image_callback,
                                           queue_size=1)
         self._tf_broadcaster = tf.TransformBroadcaster()
+        self._pose_pub = rospy.Publisher('aprilgrid_pose', PoseStamped, queue_size=10)   
 
     def image_callback(self, ros_image):
         try:
@@ -228,6 +230,17 @@ class AprilgridDetector:
                                            ros_image.header.stamp,
                                            "aprilgrid",
                                            "camera")
+        pose = PoseStamped()
+        pose.header.stamp = ros_image.header.stamp
+        pose.header.frame_id = "camera"
+        pose.pose.position.x = t[0]
+        pose.pose.position.y = t[1]
+        pose.pose.position.z = t[2]
+        pose.pose.orientation.x = q[0]
+        pose.pose.orientation.y = q[1]
+        pose.pose.orientation.z = q[2]
+        pose.pose.orientation.w = q[3]
+        self._pose_pub.publish(pose)
 
 def main():
     rospy.init_node('aprilgrid_detector', anonymous=True)
