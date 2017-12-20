@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="iso-8859-15"?>
 
 <launch>
-  <include file="$(find pose_to_tf)/launch/pose_to_tf.launch"/>
+  <include file="$(find pose_to_tf)/launch/pose_to_tf.launch">
+    <arg name="pose_topic" value="aprilgrid_pose"/>
+    <arg name="from_tf" value="camera"/>
+    <arg name="to_tf" value="aprilgrid"/>
+  </include>
     
-  <group ns="davis">
-    <node name="image_proc" pkg="image_proc" type="image_proc"/>
-  </group>
+  <node ns="davis/left" name="image_proc" pkg="image_proc" type="image_proc" output="screen">
+    <param name="cam_info_url" value="$(find aprilgrid_detector)/config/camchain-imucam-_left_ros.yaml"/>
+  </node>
 
   <node name="aprilgrid_detector" pkg="aprilgrid_detector" type="aprilgrid_detector.py" output="screen" required="true">
     <param name="camchain" type="string" value="$(find aprilgrid_detector)/config/camchain_left.yaml"/>
     <param name="target" type="string" value="$(find aprilgrid_detector)/config/aprilgrid_6x6.yaml"/>
     <!-- Topics -->
-    <remap from="image" to="/davis/image_rect"/>
+    <remap from="image" to="/davis/left/image_rect"/>
   </node>
 </launch>
